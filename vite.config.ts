@@ -198,7 +198,8 @@ async function startDaemon(daemon: ManagedDaemon) {
   });
   child.unref();
 
-  return { running: true, pid: child.pid ?? null };
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  return getDaemonStatus(daemon);
 }
 
 async function stopDaemon(daemon: ManagedDaemon) {

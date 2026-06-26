@@ -19,12 +19,14 @@ import fcntl
 from pathlib import Path
 from datetime import datetime
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 # ── Config ─────────────────────────────────────────────────────────────────────
-WATCH_DIR   = Path.home() / "clawsphere" / "txt2transcribe"
-OUTPUT_DIR  = Path.home() / "clawsphere" / "txt2speech" / "output"
-LOG_FILE    = Path.home() / "clawsphere" / "txt2speech" / "tts-watch.log"
-PID_FILE    = Path.home() / "clawsphere" / "txt2speech" / "tts-watch.pid"
-LOCK_FILE   = Path.home() / "clawsphere" / "txt2speech" / "tts-watch.lock"
+WATCH_DIR   = PROJECT_ROOT / "audio_script"
+OUTPUT_DIR  = PROJECT_ROOT / "txt2speech" / "output"
+LOG_FILE    = PROJECT_ROOT / "txt2speech" / "tts-watch.log"
+PID_FILE    = PROJECT_ROOT / "txt2speech" / "tts-watch.pid"
+LOCK_FILE   = PROJECT_ROOT / "txt2speech" / "tts-watch.lock"
 POLL_INTERVAL = 2.0   # seconds between directory scans
 INPUT_READY_AGE = 1.0 # minimum age before considering a text file
 STABLE_CHECK_INTERVAL = 0.5
