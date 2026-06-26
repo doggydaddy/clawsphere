@@ -1,0 +1,152 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  color: #f8fafc;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(20, 184, 166, 0.18), transparent 26rem),
+    radial-gradient(circle at 80% 72%, rgba(248, 113, 113, 0.15), transparent 24rem),
+    #05070c;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.controls {
+  position: fixed;
+  left: clamp(1rem, 3vw, 2.5rem);
+  right: clamp(1rem, 3vw, 2.5rem);
+  bottom: clamp(1rem, 3vw, 2.5rem);
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+
+.controls > * {
+  pointer-events: auto;
+}
+
+.eyebrow,
+h1 {
+  margin: 0;
+}
+
+.eyebrow {
+  color: #8ff2df;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  max-width: 12ch;
+  font-size: clamp(2rem, 8vw, 5.5rem);
+  line-height: 0.92;
+}
+
+.queue-status,
+.system-status,
+button {
+  min-width: 8.5rem;
+  height: 2.875rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  color: #f8fafc;
+  background: rgba(5, 7, 12, 0.66);
+  font: inherit;
+  font-weight: 700;
+  backdrop-filter: blur(16px);
+  cursor: pointer;
+}
+
+.queue-status {
+  min-width: min(22rem, 100%);
+  max-width: 26rem;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 0 1rem;
+  overflow: hidden;
+  color: rgba(248, 250, 252, 0.82);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.system-status {
+  min-width: 7.5rem;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 0 1rem;
+  color: rgba(248, 250, 252, 0.82);
+  cursor: default;
+}
+
+button:disabled {
+  color: rgba(248, 250, 252, 0.45);
+  cursor: not-allowed;
+}
+
+button:not(:disabled):hover {
+  border-color: rgba(143, 242, 223, 0.72);
+  background: rgba(18, 24, 34, 0.82);
+}
+
+audio {
+  display: none;
+}
+
+.lil-gui.root {
+  --background-color: rgba(5, 7, 12, 0.82);
+  --text-color: #f8fafc;
+  --title-background-color: rgba(12, 16, 24, 0.95);
+  --widget-color: rgba(255, 255, 255, 0.12);
+  --hover-color: rgba(143, 242, 223, 0.18);
+  --focus-color: rgba(143, 242, 223, 0.32);
+  --number-color: #8ff2df;
+  backdrop-filter: blur(16px);
+}
+
+@media (max-width: 680px) {
+  .controls {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .controls > div {
+    flex-basis: 100%;
+  }
+
+  .queue-status,
+  .system-status,
+  button {
+    flex: 1 1 9rem;
+  }
+
+  .queue-status,
+  .system-status,
+  button {
+    width: 100%;
+  }
+}

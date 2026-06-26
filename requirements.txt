@@ -1,0 +1,4 @@
+gTTS
+numpy
+openai-whisper
+sounddevice

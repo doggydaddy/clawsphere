@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clawsphere Nigredo</title>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="scene"></canvas>
+      <section class="controls" aria-label="Audio controls">
+        <div>
+          <p class="eyebrow">Clawsphere</p>
+          <h1>Nigredo</h1>
+        </div>
+        <p id="queue-status" class="queue-status">System stopped</p>
+        <p id="system-status" class="system-status">Checking</p>
+        <button id="system-toggle" type="button">Start</button>
+      </section>
+      <audio id="audio" crossorigin="anonymous"></audio>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

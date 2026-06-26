@@ -1,0 +1,16 @@
+{
+  "sphereColor": "#3d305a",
+  "particleColor": "#534ad3",
+  "noiseStrength": 3,
+  "audioStrength": 0.52,
+  "particlePulse": 0.75,
+  "orbitOpacity": 0.82,
+  "orbitSpeed": 0.72,
+  "orbitSmear": 1,
+  "micRingOpacity": 0.86,
+  "micRingRadius": 2.72,
+  "micRingSensitivity": 28,
+  "bloomThreshold": 0.15,
+  "bloomStrength": 1.1,
+  "bloomRadius": 0.72
+}
