@@ -173,7 +173,49 @@ speech2txt/whisper-mic-daemon.pid
 txt2speech/tts-watch.pid
 ```
 
+## AI Response Bridge
+
+The bridge daemon closes the voice loop: it watches for transcribed speech, routes it
+through OpenClaw, and writes the AI reply back to `txt2transcribe/` for TTS playback.
+
+```
+speech2txt/input/*_mic.txt
+        ↓
+clawsphere-bridge.py  (polls every 5s)
+        ↓  openclaw agent CLI → main session
+        ↓
+txt2transcribe/<timestamp>_clawsphere_reply.txt
+        ↓
+tts-watch.py → audio → visualizer
+```
+
+### Running the bridge
+
+```bash
+.venv/bin/python clawsphere-bridge.py
+```
+
+The bridge uses `openclaw agent --session-key agent:main:main` to route the transcript
+through the live main session. The active OpenClaw instance replies in character as
+Nigredo; the reply is written to `txt2transcribe/` and picked up by the TTS watcher.
+
+State files (PID, log) are written to `state/`:
+
+```
+state/clawsphere-bridge.pid
+state/clawsphere-bridge.log
+```
+
+### Alternative: OpenClaw cron watcher
+
+If you prefer a cron-based approach instead of a persistent daemon, the OpenClaw
+gateway can run an isolated agent every 5 seconds via a registered cron job. This
+requires no extra process but depends on the gateway having `exec`/`read`/`write`
+tools enabled for isolated runs. The bridge daemon is simpler and more reliable for
+most setups.
+
 ## Verification
+
 
 Run:
 

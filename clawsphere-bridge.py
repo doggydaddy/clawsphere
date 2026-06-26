@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -10,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 INPUT_DIR = ROOT / 'speech2txt' / 'input'
-OUTPUT_DIR = ROOT / 'audio_script'
+OUTPUT_DIR = ROOT / 'txt2transcribe'
 STATE_DIR = ROOT / 'state'
 LOG_FILE = STATE_DIR / 'clawsphere-bridge.log'
 PID_FILE = STATE_DIR / 'clawsphere-bridge.pid'

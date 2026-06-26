@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/home/doggydaddy/.openclaw/workspace/clawsphere"
+ROOT="/home/doggydaddy/clawsphere"
 INPUT_DIR="$ROOT/speech2txt/input"
 STATE_DIR="$ROOT/state"
 LOG_FILE="$STATE_DIR/clawsphere-watcher.log"
