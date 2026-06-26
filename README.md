@@ -18,7 +18,20 @@ Three.js audio visualizer with an automated text-to-speech queue.
 
 When producing new narration, prompts, test scripts, or other text that should be turned into audio, save the output in `audio_script/`.
 
+For audio-only conversation mode, the agent is the bridge between microphone transcripts and spoken replies:
+
+- Whisper writes incoming user speech transcripts to `speech2txt/input/`
+- a Clawsphere watcher should be running whenever audio-only conversation mode is active
+- the watcher/agent should poll `speech2txt/input/` every 5 seconds for new transcript files
+- the agent should read those transcript files
+- the agent should write spoken reply scripts to `audio_script/`
+- after handling a microphone transcript, the agent should mark it as handled by renaming it to a `.mic.done` file
+- the TTS watcher converts those reply scripts into audio in `txt2speech/output/`
+- the visualizer plays queued audio and deletes it after playback
+
 Do not put agent-generated speech text directly in `txt2speech/output/`; that folder is for generated audio files only and files there are deleted after playback.
+
+Whisper currently saves microphone transcripts with names like `20260626_195253_mic.txt`. After the agent handles one of these files, it should rename it to a handled form such as `20260626_195253_mic.done`.
 
 Use stable, descriptive filenames in `audio_script/`, for example:
 
@@ -26,6 +39,25 @@ Use stable, descriptive filenames in `audio_script/`, for example:
 audio_script/scene_01_intro.txt
 audio_script/test_01.txt
 ```
+
+### Clawsphere Watcher / Bridge
+
+Use the local bridge helper to monitor microphone transcripts and route them through the agent while Clawsphere is active:
+
+```bash
+python3 clawsphere-bridge.py
+```
+
+The bridge polls `speech2txt/input/` every 5 seconds, sends each new microphone transcript into the configured OpenClaw session, writes spoken reply scripts into `audio_script/`, and then renames handled microphone transcript files to `.mic.done`.
+
+Logs and state files:
+
+```text
+state/clawsphere-bridge.log
+state/clawsphere-bridge.pid
+```
+
+This bridge should remain running whenever the agent is expected to conduct audio-only conversation through Clawsphere.
 
 ## Visual Settings
 
