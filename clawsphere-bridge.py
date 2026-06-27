@@ -16,6 +16,7 @@ STATE_DIR = ROOT / 'state'
 LOG_FILE = STATE_DIR / 'clawsphere-bridge.log'
 PID_FILE = STATE_DIR / 'clawsphere-bridge.pid'
 POLL_SECONDS = float(os.environ.get('CLAWSPHERE_BRIDGE_POLL_SECONDS', '0.25'))
+MERGE_WINDOW_SECONDS = float(os.environ.get('CLAWSPHERE_TRANSCRIPT_MERGE_SECONDS', '0.9'))
 SESSION_KEY = 'agent:main:main'
 
 SYSTEM_PROMPT = (
@@ -107,6 +108,38 @@ def is_ready_transcript(path: Path) -> bool:
     return first.st_size == second.st_size and first.st_mtime_ns == second.st_mtime_ns
 
 
+def pending_transcripts() -> list[Path]:
+    return [
+        path
+        for path in sorted(INPUT_DIR.glob('*_mic.txt'))
+        if is_ready_transcript(path)
+    ]
+
+
+def collect_transcript_batch(first_path: Path) -> list[Path]:
+    batch = [first_path]
+    deadline = time.monotonic() + MERGE_WINDOW_SECONDS
+
+    while time.monotonic() < deadline:
+        for path in pending_transcripts():
+            if path not in batch:
+                batch.append(path)
+                deadline = time.monotonic() + MERGE_WINDOW_SECONDS
+        time.sleep(min(POLL_SECONDS, 0.1))
+
+    return sorted(batch)
+
+
+def read_transcript_batch(paths: list[Path]) -> str:
+    return ' '.join(text for text in (read_text(path) for path in paths) if text)
+
+
+def mark_batch_done(paths: list[Path]) -> None:
+    for path in paths:
+        done = mark_done(path)
+        log(f'marked handled: {done.name}')
+
+
 def main() -> int:
     INPUT_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -116,28 +149,34 @@ def main() -> int:
 
     try:
         while True:
-            for path in sorted(INPUT_DIR.glob('*_mic.txt')):
-                try:
-                    if not is_ready_transcript(path):
-                        continue
+            paths = pending_transcripts()
+            if not paths:
+                time.sleep(POLL_SECONDS)
+                continue
 
-                    transcript = read_text(path)
-                    if not transcript:
-                        done = mark_done(path)
-                        log(f'marked empty transcript handled: {done.name}')
-                        continue
+            batch = collect_transcript_batch(paths[0])
+            try:
+                transcript = read_transcript_batch(batch)
+                names = ', '.join(path.name for path in batch)
 
-                    log(f'handling transcript: {path.name}')
+                if not transcript:
+                    mark_batch_done(batch)
+                    log(f'marked empty transcript batch handled: {names}')
+                else:
+                    log(f'handling transcript batch: {names}')
                     reply = session_send(transcript)
                     if reply and reply != 'NO_REPLY':
                         reply_path = write_reply(reply)
                         log(f'wrote reply script: {reply_path.name}')
                     else:
-                        log(f'no reply for transcript: {path.name}')
+                        log(f'no reply for transcript batch: {names}')
 
-                    done = mark_done(path)
-                    log(f'marked handled: {done.name}')
-                except Exception as error:  # noqa: BLE001
+                    try:
+                        mark_batch_done(batch)
+                    except FileNotFoundError:
+                        log(f'transcript batch already moved: {names}')
+            except Exception as error:  # noqa: BLE001
+                for path in batch:
                     log(f'error handling {path.name}: {error}')
             time.sleep(POLL_SECONDS)
     finally:

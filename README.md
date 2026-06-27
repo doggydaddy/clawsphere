@@ -49,7 +49,7 @@ Use the local bridge helper to monitor microphone transcripts and route them thr
 python3 clawsphere-bridge.py
 ```
 
-The bridge polls `speech2txt/input/` every 250 ms by default, sends each new microphone transcript into the configured OpenClaw session, writes spoken reply scripts into `txt2transcribe/`, and then renames handled microphone transcript files to `.mic.done`. The TTS watcher polls `txt2transcribe/` every 100 ms and starts conversion after a short stability check.
+The bridge polls `speech2txt/input/` every 250 ms by default, waits briefly to merge nearby transcript fragments, sends the combined transcript into the configured OpenClaw session, writes spoken reply scripts into `txt2transcribe/`, and then renames handled microphone transcript files to `.mic.done`. The TTS watcher polls `txt2transcribe/` every 100 ms and starts conversion after a short stability check.
 
 Logs and state files:
 
@@ -138,7 +138,7 @@ Run the microphone daemon:
 .venv/bin/python speech2txt/whisper-mic-daemon.py
 ```
 
-It listens to the default microphone, detects speech using a volume threshold, transcribes each speech clip with local Whisper, and atomically saves timestamped `.txt` files in:
+It listens to the default microphone, detects speech using a volume threshold, waits 1.6 seconds of silence before finalizing a speech clip, transcribes that clip with local Whisper, and atomically saves timestamped `.txt` files in:
 
 ```text
 speech2txt/input/
@@ -148,7 +148,7 @@ Useful options:
 
 ```bash
 .venv/bin/python speech2txt/whisper-mic-daemon.py --model small --language en
-.venv/bin/python speech2txt/whisper-mic-daemon.py --device 1 --threshold 0.018
+.venv/bin/python speech2txt/whisper-mic-daemon.py --device 1 --threshold 0.018 --silence 1.6
 ```
 
 The visualizer manages speech-to-text, the AI bridge, and text-to-speech through:
@@ -183,7 +183,7 @@ through OpenClaw, and writes the AI reply back to `txt2transcribe/` for TTS play
 ```
 speech2txt/input/*_mic.txt
         ↓
-clawsphere-bridge.py  (polls every 250 ms)
+clawsphere-bridge.py  (polls every 250 ms, merges nearby transcript fragments)
         ↓  openclaw agent CLI → main session
         ↓
 txt2transcribe/<timestamp>_clawsphere_reply.txt

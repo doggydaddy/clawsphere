@@ -8,111 +8,6 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import GUI from 'lil-gui';
 import { pageText } from './pageText';
 
-const vertexShader = `
-vec3 mod289(vec3 x) {
-  return x - floor(x * (1.0 / 289.0)) * 289.0;
-}
-
-vec4 mod289(vec4 x) {
-  return x - floor(x * (1.0 / 289.0)) * 289.0;
-}
-
-vec4 permute(vec4 x) {
-  return mod289(((x * 34.0) + 10.0) * x);
-}
-
-vec4 taylorInvSqrt(vec4 r) {
-  return 1.79284291400159 - 0.85373472095314 * r;
-}
-
-vec3 fade(vec3 t) {
-  return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
-}
-
-float pnoise(vec3 P, vec3 rep) {
-  vec3 Pi0 = mod(floor(P), rep);
-  vec3 Pi1 = mod(Pi0 + vec3(1.0), rep);
-  Pi0 = mod289(Pi0);
-  Pi1 = mod289(Pi1);
-  vec3 Pf0 = fract(P);
-  vec3 Pf1 = Pf0 - vec3(1.0);
-  vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
-  vec4 iy = vec4(Pi0.yy, Pi1.yy);
-  vec4 iz0 = Pi0.zzzz;
-  vec4 iz1 = Pi1.zzzz;
-  vec4 ixy = permute(permute(ix) + iy);
-  vec4 ixy0 = permute(ixy + iz0);
-  vec4 ixy1 = permute(ixy + iz1);
-  vec4 gx0 = ixy0 * (1.0 / 7.0);
-  vec4 gy0 = fract(floor(gx0) * (1.0 / 7.0)) - 0.5;
-  gx0 = fract(gx0);
-  vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0);
-  vec4 sz0 = step(gz0, vec4(0.0));
-  gx0 -= sz0 * (step(0.0, gx0) - 0.5);
-  gy0 -= sz0 * (step(0.0, gy0) - 0.5);
-  vec4 gx1 = ixy1 * (1.0 / 7.0);
-  vec4 gy1 = fract(floor(gx1) * (1.0 / 7.0)) - 0.5;
-  gx1 = fract(gx1);
-  vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1);
-  vec4 sz1 = step(gz1, vec4(0.0));
-  gx1 -= sz1 * (step(0.0, gx1) - 0.5);
-  gy1 -= sz1 * (step(0.0, gy1) - 0.5);
-  vec3 g000 = vec3(gx0.x, gy0.x, gz0.x);
-  vec3 g100 = vec3(gx0.y, gy0.y, gz0.y);
-  vec3 g010 = vec3(gx0.z, gy0.z, gz0.z);
-  vec3 g110 = vec3(gx0.w, gy0.w, gz0.w);
-  vec3 g001 = vec3(gx1.x, gy1.x, gz1.x);
-  vec3 g101 = vec3(gx1.y, gy1.y, gz1.y);
-  vec3 g011 = vec3(gx1.z, gy1.z, gz1.z);
-  vec3 g111 = vec3(gx1.w, gy1.w, gz1.w);
-  vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g010, g010), dot(g100, g100), dot(g110, g110)));
-  g000 *= norm0.x;
-  g010 *= norm0.y;
-  g100 *= norm0.z;
-  g110 *= norm0.w;
-  vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g011, g011), dot(g101, g101), dot(g111, g111)));
-  g001 *= norm1.x;
-  g011 *= norm1.y;
-  g101 *= norm1.z;
-  g111 *= norm1.w;
-  float n000 = dot(g000, Pf0);
-  float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));
-  float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z));
-  float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));
-  float n001 = dot(g001, vec3(Pf0.xy, Pf1.z));
-  float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));
-  float n011 = dot(g011, vec3(Pf0.x, Pf1.yz));
-  float n111 = dot(g111, Pf1);
-  vec3 fade_xyz = fade(Pf0);
-  vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);
-  vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
-  float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);
-  return 2.2 * n_xyz;
-}
-
-uniform float u_time;
-uniform float u_frequency;
-uniform float u_noiseStrength;
-uniform float u_audioStrength;
-
-void main() {
-  float audio = max(u_frequency / 255.0, 0.08);
-  float noise = u_noiseStrength * pnoise(position + vec3(u_time * 0.55), vec3(10.0));
-  float displacement = audio * u_audioStrength * noise;
-  vec3 newPosition = position + normal * displacement;
-
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-}
-`;
-
-const fragmentShader = `
-uniform vec3 u_color;
-
-void main() {
-  gl_FragColor = vec4(u_color, 1.0);
-}
-`;
-
 function getElement<T extends HTMLElement>(selector: string) {
   const element = document.querySelector<T>(selector);
   if (!element) {
@@ -144,15 +39,15 @@ const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerH
 camera.position.set(0, 0, 13);
 
 const params = {
-  color: '#3d305a',
-  particleColor: '#534ad3',
+  color: '#2ffcff',
+  particleColor: '#ff3cf7',
   noiseStrength: 3.0,
   audioStrength: 0.52,
   particlePulse: 0.75,
   orbitOpacity: 0.82,
   orbitSpeed: 0.72,
   orbitSmear: 1.0,
-  micRingOpacity: 0.86,
+  micRingOpacity: 0.3,
   micRingRadius: 2.72,
   micRingSensitivity: 28,
   bloomThreshold: 0.15,
@@ -198,24 +93,216 @@ const numericVisualSettingRanges: Record<NumericVisualSetting, [number, number]>
 let visualSettingsSignature = '';
 let visualSettingControllers: Array<{ updateDisplay: () => void }> = [];
 
-const uniforms = {
-  u_time: { value: 0 },
-  u_frequency: { value: 0 },
-  u_noiseStrength: { value: params.noiseStrength },
-  u_audioStrength: { value: params.audioStrength },
-  u_color: { value: new THREE.Color(params.color) }
+type CubeCell = {
+  basePosition: THREE.Vector3;
+  direction: THREE.Vector3;
+  distance: number;
+  edgeFactor: number;
+  frequencyRatio: number;
+  response: number;
+  color: THREE.Color;
+  phase: number;
 };
 
-const sphere = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(2, 26),
-  new THREE.ShaderMaterial({
-    uniforms,
-    vertexShader,
-    fragmentShader,
-    wireframe: true
-  })
-);
-scene.add(sphere);
+const cubeGridSize = 5;
+const cubeSpacing = 0.88;
+const cubeSize = 0.68;
+const outerCubeSize = cubeSpacing * (cubeGridSize - 1) + cubeSize;
+const cubeHalfIndex = (cubeGridSize - 1) / 2;
+const cubeCells: CubeCell[] = [];
+const cubeInstanceCount = cubeGridSize ** 3;
+const cubeEdgeVertexCount = cubeInstanceCount * 24;
+const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+const cubeFillMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  transparent: true,
+  opacity: 0.015,
+  blending: THREE.AdditiveBlending,
+  depthTest: true,
+  depthWrite: false,
+  vertexColors: true
+});
+const cubeMaterial = new THREE.LineBasicMaterial({
+  color: 0xffffff,
+  transparent: true,
+  opacity: 0.24,
+  blending: THREE.AdditiveBlending,
+  depthTest: true,
+  depthWrite: false,
+  vertexColors: true
+});
+const cubeFillLattice = new THREE.InstancedMesh(cubeGeometry, cubeFillMaterial, cubeInstanceCount);
+cubeFillLattice.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+cubeFillLattice.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cubeInstanceCount * 3), 3);
+const cubeEdgePositions = new Float32Array(cubeEdgeVertexCount * 3);
+const cubeEdgeColors = new Float32Array(cubeEdgeVertexCount * 3);
+const cubeEdgeGeometry = new THREE.BufferGeometry();
+cubeEdgeGeometry.setAttribute('position', new THREE.BufferAttribute(cubeEdgePositions, 3));
+cubeEdgeGeometry.setAttribute('color', new THREE.BufferAttribute(cubeEdgeColors, 3));
+const cubeLattice = new THREE.LineSegments(cubeEdgeGeometry, cubeMaterial);
+scene.add(cubeFillLattice);
+scene.add(cubeLattice);
+
+const outerCubeMaterial = new THREE.LineBasicMaterial({
+  color: params.color,
+  transparent: true,
+  opacity: 0.08,
+  blending: THREE.AdditiveBlending,
+  depthTest: false,
+  depthWrite: false
+});
+const outerCube = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(outerCubeSize, outerCubeSize, outerCubeSize)), outerCubeMaterial);
+scene.add(outerCube);
+
+const cubeMatrix = new THREE.Matrix4();
+const cubePosition = new THREE.Vector3();
+const cubeScale = new THREE.Vector3();
+const cubeQuaternion = new THREE.Quaternion();
+const cubeColor = new THREE.Color();
+const cubeAccentColor = new THREE.Color();
+const cubeWhiteColor = new THREE.Color(0xffffff);
+const cubeEdgeOffsets = [
+  [-1, -1, -1],
+  [1, -1, -1],
+  [1, -1, -1],
+  [1, 1, -1],
+  [1, 1, -1],
+  [-1, 1, -1],
+  [-1, 1, -1],
+  [-1, -1, -1],
+  [-1, -1, 1],
+  [1, -1, 1],
+  [1, -1, 1],
+  [1, 1, 1],
+  [1, 1, 1],
+  [-1, 1, 1],
+  [-1, 1, 1],
+  [-1, -1, 1],
+  [-1, -1, -1],
+  [-1, -1, 1],
+  [1, -1, -1],
+  [1, -1, 1],
+  [1, 1, -1],
+  [1, 1, 1],
+  [-1, 1, -1],
+  [-1, 1, 1]
+] as const;
+
+for (let x = 0; x < cubeGridSize; x += 1) {
+  for (let y = 0; y < cubeGridSize; y += 1) {
+    for (let z = 0; z < cubeGridSize; z += 1) {
+      const basePosition = new THREE.Vector3(
+        (x - cubeHalfIndex) * cubeSpacing,
+        (y - cubeHalfIndex) * cubeSpacing,
+        (z - cubeHalfIndex) * cubeSpacing
+      );
+      const direction = basePosition.lengthSq() > 0 ? basePosition.clone().normalize() : new THREE.Vector3(0, 1, 0);
+      const edgeFactor = Math.max(Math.abs(x - cubeHalfIndex), Math.abs(y - cubeHalfIndex), Math.abs(z - cubeHalfIndex)) / cubeHalfIndex;
+      const frequencyRatio = (x + y * cubeGridSize + z * cubeGridSize * cubeGridSize) / (cubeInstanceCount - 1);
+
+      cubeCells.push({
+        basePosition,
+        direction,
+        distance: basePosition.length(),
+        edgeFactor,
+        frequencyRatio,
+        response: 0,
+        color: new THREE.Color(),
+        phase: (x * 0.73 + y * 1.17 + z * 1.61) % (Math.PI * 2)
+      });
+    }
+  }
+}
+
+function updateCubeColors() {
+  const baseColor = new THREE.Color(params.color);
+  cubeAccentColor.set(params.particleColor);
+  outerCubeMaterial.color.copy(baseColor).lerp(cubeWhiteColor, 0.16);
+
+  for (let i = 0; i < cubeCells.length; i += 1) {
+    const cell = cubeCells[i];
+    const colorMix = THREE.MathUtils.clamp((cell.basePosition.x + cell.basePosition.y + cell.basePosition.z) / (cubeSpacing * cubeHalfIndex * 6) + 0.5, 0, 1);
+    cubeColor.copy(baseColor).lerp(cubeAccentColor, colorMix).lerp(cubeWhiteColor, 0.12 + cell.edgeFactor * 0.12);
+    cell.color.copy(cubeColor);
+    cubeFillLattice.setColorAt(i, cubeColor);
+
+    for (let vertexIndex = 0; vertexIndex < 24; vertexIndex += 1) {
+      const colorOffset = (i * 24 + vertexIndex) * 3;
+      cubeEdgeColors[colorOffset] = cubeColor.r;
+      cubeEdgeColors[colorOffset + 1] = cubeColor.g;
+      cubeEdgeColors[colorOffset + 2] = cubeColor.b;
+    }
+  }
+
+  if (cubeFillLattice.instanceColor) {
+    cubeFillLattice.instanceColor.needsUpdate = true;
+  }
+  cubeEdgeGeometry.attributes.color.needsUpdate = true;
+}
+
+function getCubeFrequencyLevel(cell: CubeCell, frequencyData: Uint8Array | null) {
+  if (!frequencyData || frequencyData.length === 0) {
+    return 0;
+  }
+
+  const curvedRatio = cell.frequencyRatio ** 1.45;
+  const binIndex = Math.round(curvedRatio * (frequencyData.length - 1));
+  const start = Math.max(0, binIndex - 1);
+  const end = Math.min(frequencyData.length - 1, binIndex + 1);
+  let total = 0;
+
+  for (let index = start; index <= end; index += 1) {
+    total += frequencyData[index];
+  }
+
+  return total / ((end - start + 1) * 255);
+}
+
+function updateCubeLattice(elapsed: number, audioLevel: number, frequencyData: Uint8Array | null) {
+  const audioPush = audioLevel * params.audioStrength;
+
+  cubeLattice.rotation.y = elapsed * 0.006;
+  cubeLattice.rotation.x = Math.sin(elapsed * 0.12) * 0.035;
+  cubeLattice.rotation.z = Math.sin(elapsed * 0.1) * 0.012;
+  cubeFillLattice.rotation.copy(cubeLattice.rotation);
+  outerCube.rotation.copy(cubeLattice.rotation);
+  outerCube.scale.setScalar(1 + audioPush * 0.12);
+  cubeFillMaterial.opacity = 0.012 + audioLevel * 0.03;
+  cubeMaterial.opacity = 0.22 + audioLevel * 0.14;
+  outerCubeMaterial.opacity = 0.04 + audioLevel * 0.05;
+
+  for (let i = 0; i < cubeCells.length; i += 1) {
+    const cell = cubeCells[i];
+    const frequencyLevel = getCubeFrequencyLevel(cell, frequencyData);
+    const responseSpeed = frequencyLevel > cell.response ? 0.32 : 0.12;
+    cell.response = THREE.MathUtils.lerp(cell.response, frequencyLevel, responseSpeed);
+
+    const ripple = Math.sin(elapsed * (1.4 + params.noiseStrength * 0.1) - cell.distance * 1.8 + cell.phase) * 0.025;
+    const frequencyPush = cell.response * params.audioStrength * (0.45 + cell.edgeFactor * 1.05);
+    const expansion = frequencyPush + audioPush * 0.12 + ripple;
+    const scale = 1 + cell.response * params.audioStrength * (0.16 + cell.edgeFactor * 0.12);
+
+    cubePosition.copy(cell.basePosition).addScaledVector(cell.direction, expansion);
+    cubeScale.setScalar(scale);
+    cubeMatrix.compose(cubePosition, cubeQuaternion, cubeScale);
+    cubeFillLattice.setMatrixAt(i, cubeMatrix);
+
+    for (let vertexIndex = 0; vertexIndex < cubeEdgeOffsets.length; vertexIndex += 1) {
+      const [x, y, z] = cubeEdgeOffsets[vertexIndex];
+      const positionOffset = (i * cubeEdgeOffsets.length + vertexIndex) * 3;
+
+      cubeEdgePositions[positionOffset] = cubePosition.x + x * cubeSize * 0.5 * scale;
+      cubeEdgePositions[positionOffset + 1] = cubePosition.y + y * cubeSize * 0.5 * scale;
+      cubeEdgePositions[positionOffset + 2] = cubePosition.z + z * cubeSize * 0.5 * scale;
+    }
+  }
+
+  cubeFillLattice.instanceMatrix.needsUpdate = true;
+  cubeEdgeGeometry.attributes.position.needsUpdate = true;
+}
+
+updateCubeColors();
+updateCubeLattice(0, 0, null);
 
 const particleCount = 1400;
 const particlePositions = new Float32Array(particleCount * 3);
@@ -571,7 +658,7 @@ function applyVisualSettings(settings: VisualSettings) {
 
   if (isHexColor(sphereColor)) {
     params.color = sphereColor;
-    uniforms.u_color.value.set(sphereColor);
+    updateCubeColors();
     orbitalMaterial.color.set(sphereColor);
     micRingMaterial.color.set(sphereColor);
     micRingBaseMaterial.color.set(sphereColor);
@@ -579,6 +666,7 @@ function applyVisualSettings(settings: VisualSettings) {
 
   if (isHexColor(settings.particleColor)) {
     params.particleColor = settings.particleColor;
+    updateCubeColors();
     particleMaterial.color.set(settings.particleColor);
   }
 
@@ -593,8 +681,6 @@ function applyVisualSettings(settings: VisualSettings) {
     params[key] = THREE.MathUtils.clamp(value, min, max);
   });
 
-  uniforms.u_noiseStrength.value = params.noiseStrength;
-  uniforms.u_audioStrength.value = params.audioStrength;
   bloomPass.threshold = params.bloomThreshold;
   bloomPass.radius = params.bloomRadius;
   visualSettingControllers.forEach((controller) => controller.updateDisplay());
@@ -806,21 +892,18 @@ document.addEventListener('pointermove', (event) => {
 });
 
 const gui = new GUI({ title: 'Visualizer' });
-const sphereColorController = gui.addColor(params, 'color').name('Sphere').onChange((value: string) => {
-  uniforms.u_color.value.set(value);
+const sphereColorController = gui.addColor(params, 'color').name('Cube').onChange((value: string) => {
+  updateCubeColors();
   orbitalMaterial.color.set(value);
   micRingMaterial.color.set(value);
   micRingBaseMaterial.color.set(value);
 });
 const particleColorController = gui.addColor(params, 'particleColor').name('Particles').onChange((value: string) => {
+  updateCubeColors();
   particleMaterial.color.set(value);
 });
-const noiseController = gui.add(params, 'noiseStrength', 0.2, 7, 0.01).name('Noise').onChange((value: number) => {
-  uniforms.u_noiseStrength.value = value;
-});
-const audioController = gui.add(params, 'audioStrength', 0.05, 1.5, 0.01).name('Audio').onChange((value: number) => {
-  uniforms.u_audioStrength.value = value;
-});
+const noiseController = gui.add(params, 'noiseStrength', 0.2, 7, 0.01).name('Cube ripple');
+const audioController = gui.add(params, 'audioStrength', 0.05, 1.5, 0.01).name('Cube push');
 const particlePulseController = gui.add(params, 'particlePulse', 0, 2, 0.01).name('Particle pulse');
 const orbitFolder = gui.addFolder('Orbit');
 const orbitOpacityController = orbitFolder.add(params, 'orbitOpacity', 0, 1, 0.01).name('Opacity');
@@ -874,15 +957,14 @@ const clock = new THREE.Clock();
 
 function animate() {
   const elapsed = clock.getElapsedTime();
-  const frequency = audio.paused ? 0 : analyser.getAverageFrequency();
+  const frequencyData = audio.paused ? null : analyser.getFrequencyData();
+  const frequency = frequencyData
+    ? frequencyData.reduce((total, value) => total + value, 0) / frequencyData.length
+    : 0;
   smoothedFrequency = THREE.MathUtils.lerp(smoothedFrequency, frequency, 0.12);
   const audioLevel = smoothedFrequency / 255;
 
-  uniforms.u_time.value = elapsed;
-  uniforms.u_frequency.value = smoothedFrequency;
-
-  sphere.rotation.y = elapsed * 0.08;
-  sphere.rotation.x = Math.sin(elapsed * 0.25) * 0.08;
+  updateCubeLattice(elapsed, audioLevel, frequencyData);
 
   particles.rotation.y = elapsed * (0.018 + audioLevel * 0.06);
   particles.rotation.x = Math.sin(elapsed * 0.18) * 0.08;

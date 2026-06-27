@@ -17,3 +17,5 @@ speech2txt/models/
 speech2txt/mic_status.json
 txt2speech/output/
 visual_commands/
+
+src/pageText.ts

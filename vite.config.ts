@@ -27,7 +27,7 @@ type ManagedDaemon = {
 };
 
 const micDaemon: ManagedDaemon = {
-  args: ['-u', micDaemonFile, '--model', 'base', '--threshold', '0.006'],
+  args: ['-u', micDaemonFile, '--model', 'base', '--threshold', '0.006', '--silence', '1.6'],
   cwd: __dirname,
   name: 'speech2txt',
   pidFile: micDaemonPidFile,
