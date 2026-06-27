@@ -35,6 +35,33 @@ def log(message: str) -> None:
         handle.write(f'[{timestamp}] {message}\n')
 
 
+def _extract_text(value: object) -> str:
+    if value is None:
+        return ''
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, list):
+        parts = [_extract_text(item) for item in value]
+        return ' '.join(part for part in parts if part).strip()
+    if isinstance(value, dict):
+        if isinstance(value.get('text'), str):
+            return value['text'].strip()
+        if isinstance(value.get('value'), str):
+            return value['value'].strip()
+        for key in ('payloads', 'content', 'messages', 'items', 'parts'):
+            nested = value.get(key)
+            if isinstance(nested, list):
+                text = _extract_text(nested)
+                if text:
+                    return text
+        for key in ('message', 'reply', 'assistant', 'result'):
+            nested = value.get(key)
+            text = _extract_text(nested)
+            if text:
+                return text
+    return ''
+
+
 def session_send(message: str) -> str:
     result = subprocess.run(
         [
@@ -61,12 +88,23 @@ def session_send(message: str) -> str:
     except json.JSONDecodeError as error:
         raise RuntimeError(f'Could not parse agent output: {stdout}') from error
 
-    response = data.get('reply') or data.get('message') or data.get('content') or ''
-    if isinstance(response, dict):
-        response = response.get('text', '')
-    if not isinstance(response, str):
-        response = str(response)
-    return response.strip()
+    log(f'agent json keys: {sorted(data.keys())}')
+
+    candidates = [
+        data.get('reply'),
+        data.get('message'),
+        data.get('content'),
+        data.get('assistant'),
+        data.get('result'),
+        data,
+    ]
+    for candidate in candidates:
+        response = _extract_text(candidate)
+        if response:
+            return response
+
+    log(f'agent json had no extractable reply: {json.dumps(data, ensure_ascii=False)[:2000]}')
+    return ''
 
 
 def write_reply(text: str) -> Path:
