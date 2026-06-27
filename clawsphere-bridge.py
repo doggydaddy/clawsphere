@@ -11,11 +11,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 INPUT_DIR = ROOT / 'speech2txt' / 'input'
-OUTPUT_DIR = ROOT / 'txt2transcribe'
+OUTPUT_DIR = ROOT / os.environ.get('CLAWSPHERE_REPLY_DIR', 'txt2transcribe')
 STATE_DIR = ROOT / 'state'
 LOG_FILE = STATE_DIR / 'clawsphere-bridge.log'
 PID_FILE = STATE_DIR / 'clawsphere-bridge.pid'
-POLL_SECONDS = 5
+POLL_SECONDS = float(os.environ.get('CLAWSPHERE_BRIDGE_POLL_SECONDS', '0.25'))
 SESSION_KEY = 'agent:main:main'
 
 SYSTEM_PROMPT = (
@@ -72,7 +72,9 @@ def write_reply(text: str) -> Path:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     path = OUTPUT_DIR / f'{timestamp}_clawsphere_reply.txt'
-    path.write_text(text.strip() + '\n', encoding='utf-8')
+    temp_path = path.with_name(f'.{path.name}.part')
+    temp_path.write_text(text.strip() + '\n', encoding='utf-8')
+    temp_path.replace(path)
     return path
 
 
@@ -86,6 +88,25 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding='utf-8').strip()
 
 
+def is_ready_transcript(path: Path) -> bool:
+    if path.name.startswith('.') or '.part' in path.name:
+        return False
+
+    try:
+        first = path.stat()
+    except FileNotFoundError:
+        return False
+
+    time.sleep(0.05)
+
+    try:
+        second = path.stat()
+    except FileNotFoundError:
+        return False
+
+    return first.st_size == second.st_size and first.st_mtime_ns == second.st_mtime_ns
+
+
 def main() -> int:
     INPUT_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -97,6 +118,9 @@ def main() -> int:
         while True:
             for path in sorted(INPUT_DIR.glob('*_mic.txt')):
                 try:
+                    if not is_ready_transcript(path):
+                        continue
+
                     transcript = read_text(path)
                     if not transcript:
                         done = mark_done(path)

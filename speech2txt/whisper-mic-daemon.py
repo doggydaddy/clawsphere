@@ -121,7 +121,9 @@ def save_transcript(text: str) -> Path | None:
         out_path = OUTPUT_DIR / f"{timestamp}_mic_{suffix:02d}.txt"
         suffix += 1
 
-    out_path.write_text(f"{cleaned}\n", encoding="utf-8")
+    temp_path = out_path.with_name(f".{out_path.name}.part")
+    temp_path.write_text(f"{cleaned}\n", encoding="utf-8")
+    temp_path.replace(out_path)
     return out_path
 
 

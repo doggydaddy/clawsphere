@@ -9,23 +9,24 @@ Three.js audio visualizer with an automated text-to-speech queue.
 - `vite.config.ts` adds local API routes for queued audio files.
 - `visual_settings.json` is the live visual settings file. The app polls it and applies changes while running.
 - `speech2txt/whisper-mic-daemon.py` listens to microphone input, transcribes speech with Whisper, and writes text files to `speech2txt/input/`.
+- `clawsphere-bridge.py` watches microphone transcripts, sends them to OpenClaw, and writes reply scripts to `txt2transcribe/`.
 - `speech2txt/input/` receives microphone transcripts from the Whisper daemon.
 - `txt2speech/output/` is the runtime audio queue. The visualizer plays audio files from here and removes each file after playback completes.
-- `audio_script/` is where agents should save generated script/text output that is intended to become speech.
+- `txt2transcribe/` is where generated reply text waits to be converted into speech.
 - `txt2speech/tts-watch.py` watches/handles text-to-speech generation.
 
 ## Agent Workflow
 
-When producing new narration, prompts, test scripts, or other text that should be turned into audio, save the output in `audio_script/`.
+When producing new narration, prompts, test scripts, or other text that should be turned into audio, save the output in `txt2transcribe/`.
 
 For audio-only conversation mode, the agent is the bridge between microphone transcripts and spoken replies:
 
 - Whisper writes incoming user speech transcripts to `speech2txt/input/`
-- a Clawsphere watcher should be running whenever audio-only conversation mode is active
-- the watcher/agent should poll `speech2txt/input/` every 5 seconds for new transcript files
-- the agent should read those transcript files
-- the agent should write spoken reply scripts to `audio_script/`
-- after handling a microphone transcript, the agent should mark it as handled by renaming it to a `.mic.done` file
+- `clawsphere-bridge.py` should be running whenever audio-only conversation mode is active
+- the bridge polls `speech2txt/input/` frequently for new transcript files
+- the bridge reads those transcript files and sends them to the configured OpenClaw session
+- the bridge writes spoken reply scripts to `txt2transcribe/`
+- after handling a microphone transcript, the bridge marks it as handled by renaming it to a `.mic.done` file
 - the TTS watcher converts those reply scripts into audio in `txt2speech/output/`
 - the visualizer plays queued audio and deletes it after playback
 
@@ -33,14 +34,14 @@ Do not put agent-generated speech text directly in `txt2speech/output/`; that fo
 
 Whisper currently saves microphone transcripts with names like `20260626_195253_mic.txt`. After the agent handles one of these files, it should rename it to a handled form such as `20260626_195253_mic.done`.
 
-Use stable, descriptive filenames in `audio_script/`, for example:
+Use stable, descriptive filenames in `txt2transcribe/`, for example:
 
 ```text
-audio_script/scene_01_intro.txt
-audio_script/test_01.txt
+txt2transcribe/scene_01_intro.txt
+txt2transcribe/test_01.txt
 ```
 
-### Clawsphere Watcher / Bridge
+### Clawsphere Bridge
 
 Use the local bridge helper to monitor microphone transcripts and route them through the agent while Clawsphere is active:
 
@@ -48,7 +49,7 @@ Use the local bridge helper to monitor microphone transcripts and route them thr
 python3 clawsphere-bridge.py
 ```
 
-The bridge polls `speech2txt/input/` every 5 seconds, sends each new microphone transcript into the configured OpenClaw session, writes spoken reply scripts into `audio_script/`, and then renames handled microphone transcript files to `.mic.done`.
+The bridge polls `speech2txt/input/` every 250 ms by default, sends each new microphone transcript into the configured OpenClaw session, writes spoken reply scripts into `txt2transcribe/`, and then renames handled microphone transcript files to `.mic.done`. The TTS watcher polls `txt2transcribe/` every 100 ms and starts conversion after a short stability check.
 
 Logs and state files:
 
@@ -57,7 +58,7 @@ state/clawsphere-bridge.log
 state/clawsphere-bridge.pid
 ```
 
-This bridge should remain running whenever the agent is expected to conduct audio-only conversation through Clawsphere.
+This bridge should remain running whenever the agent is expected to conduct audio-only conversation through Clawsphere. The visualizer's `Start` button manages it alongside the speech-to-text and text-to-speech daemons.
 
 ## Visual Settings
 
@@ -103,7 +104,7 @@ uv pip install -r requirements.txt --python .venv/bin/python
 
 Whisper also needs `ffmpeg` available on the system. The first run may download the selected Whisper model into `speech2txt/models/`.
 
-Both Python services are launched through the root `.venv`; there are no separate virtual environments under `speech2txt/` or `txt2speech/`.
+The Python daemons are launched through the root `.venv`; there are no separate virtual environments under `speech2txt/` or `txt2speech/`.
 
 ## Running The Visualizer
 
@@ -119,7 +120,7 @@ Open:
 http://localhost:5173/
 ```
 
-Click `Start` to turn on both speech services and unlock browser audio playback. After that, the app polls `txt2speech/output/`, plays the next audio file, and deletes it when playback finishes. Click `Stop` to pause playback and stop both speech services.
+Click `Start` to turn on the speech services and bridge, then unlock browser audio playback. After that, the app polls `txt2speech/output/`, plays the next audio file, and deletes it when playback finishes. Click `Stop` to pause playback and stop those daemons.
 
 The TTS watcher writes audio to hidden `.part` files first, then atomically renames completed audio into `txt2speech/output/`. The visualizer queue ignores hidden/temp/recently modified files, so playback only starts after the audio file is fully published.
 
@@ -127,7 +128,7 @@ The TTS watcher also uses `txt2speech/tts-watch.lock` to prevent duplicate watch
 
 The circular mic ring reacts to the Whisper daemon's live mic-status feed from `speech2txt/mic_status.json`.
 
-The main UI includes a single `Start` / `Stop` toggle. `Start` turns on both speech services and begins the audio playback queue. `Stop` pauses playback and stops both Python daemons to reduce system usage.
+The main UI includes a single `Start` / `Stop` toggle. `Start` turns on speech-to-text, the AI bridge, text-to-speech, and begins the audio playback queue. `Stop` pauses playback and stops those daemons to reduce system usage.
 
 ## Speech To Text
 
@@ -137,7 +138,7 @@ Run the microphone daemon:
 .venv/bin/python speech2txt/whisper-mic-daemon.py
 ```
 
-It listens to the default microphone, detects speech using a volume threshold, transcribes each speech clip with local Whisper, and saves timestamped `.txt` files in:
+It listens to the default microphone, detects speech using a volume threshold, transcribes each speech clip with local Whisper, and atomically saves timestamped `.txt` files in:
 
 ```text
 speech2txt/input/
@@ -150,7 +151,7 @@ Useful options:
 .venv/bin/python speech2txt/whisper-mic-daemon.py --device 1 --threshold 0.018
 ```
 
-The visualizer manages the speech services through:
+The visualizer manages speech-to-text, the AI bridge, and text-to-speech through:
 
 ```text
 GET  /api/system/status
@@ -171,6 +172,7 @@ Runtime PID files:
 ```text
 speech2txt/whisper-mic-daemon.pid
 txt2speech/tts-watch.pid
+state/clawsphere-bridge.pid
 ```
 
 ## AI Response Bridge
@@ -181,7 +183,7 @@ through OpenClaw, and writes the AI reply back to `txt2transcribe/` for TTS play
 ```
 speech2txt/input/*_mic.txt
         ↓
-clawsphere-bridge.py  (polls every 5s)
+clawsphere-bridge.py  (polls every 250 ms)
         ↓  openclaw agent CLI → main session
         ↓
 txt2transcribe/<timestamp>_clawsphere_reply.txt
@@ -205,14 +207,6 @@ State files (PID, log) are written to `state/`:
 state/clawsphere-bridge.pid
 state/clawsphere-bridge.log
 ```
-
-### Alternative: OpenClaw cron watcher
-
-If you prefer a cron-based approach instead of a persistent daemon, the OpenClaw
-gateway can run an isolated agent every 5 seconds via a registered cron job. This
-requires no extra process but depends on the gateway having `exec`/`read`/`write`
-tools enabled for isolated runs. The bridge daemon is simpler and more reliable for
-most setups.
 
 ## Verification
 

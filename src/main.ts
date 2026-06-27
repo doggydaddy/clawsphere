@@ -6,6 +6,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import GUI from 'lil-gui';
+import { pageText } from './pageText';
 
 const vertexShader = `
 vec3 mod289(vec3 x) {
@@ -123,9 +124,13 @@ function getElement<T extends HTMLElement>(selector: string) {
 
 const canvas = getElement<HTMLCanvasElement>('#scene');
 const audio = getElement<HTMLAudioElement>('#audio');
+const appTitle = getElement<HTMLHeadingElement>('#app-title');
 const queueStatus = getElement<HTMLParagraphElement>('#queue-status');
 const systemStatus = getElement<HTMLParagraphElement>('#system-status');
 const systemToggle = getElement<HTMLButtonElement>('#system-toggle');
+
+document.title = pageText.title;
+appTitle.textContent = pageText.h1;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, canvas });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -379,6 +384,7 @@ type SystemServiceStatus = {
   running: boolean;
   speech2txt: MicrophoneServiceStatus;
   txt2speech: MicrophoneServiceStatus;
+  bridge: MicrophoneServiceStatus;
 };
 
 let micAnalyserState: MicAnalyserState | null = null;
@@ -392,7 +398,7 @@ function setSystemServiceStatus(status: SystemServiceStatus) {
   systemStatus.textContent = status.running ? 'System on' : 'System off';
   systemStatus.title = `speech2txt: ${status.speech2txt.running ? `on (${status.speech2txt.pid})` : 'off'}, txt2speech: ${
     status.txt2speech.running ? `on (${status.txt2speech.pid})` : 'off'
-  }`;
+  }, bridge: ${status.bridge.running ? `on (${status.bridge.pid})` : 'off'}`;
   systemToggle.textContent = status.running ? 'Stop' : 'Start';
 }
 

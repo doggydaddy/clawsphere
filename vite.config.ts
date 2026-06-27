@@ -12,6 +12,8 @@ const rootPython = path.resolve(__dirname, '.venv/bin/python');
 const micDaemonPidFile = path.resolve(__dirname, 'speech2txt/whisper-mic-daemon.pid');
 const ttsDaemonFile = path.resolve(__dirname, 'txt2speech/tts-watch.py');
 const ttsDaemonPidFile = path.resolve(__dirname, 'txt2speech/tts-watch.pid');
+const bridgeDaemonFile = path.resolve(__dirname, 'clawsphere-bridge.py');
+const bridgeDaemonPidFile = path.resolve(__dirname, 'state/clawsphere-bridge.pid');
 const audioExtensions = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.webm']);
 const audioReadyAgeMs = 1000;
 const audioStableCheckMs = 250;
@@ -37,6 +39,14 @@ const ttsDaemon: ManagedDaemon = {
   cwd: __dirname,
   name: 'txt2speech',
   pidFile: ttsDaemonPidFile,
+  python: rootPython
+};
+
+const bridgeDaemon: ManagedDaemon = {
+  args: ['-u', bridgeDaemonFile],
+  cwd: __dirname,
+  name: 'clawsphere-bridge',
+  pidFile: bridgeDaemonPidFile,
   python: rootPython
 };
 
@@ -226,29 +236,44 @@ async function stopDaemon(daemon: ManagedDaemon) {
 }
 
 async function getSystemStatus() {
-  const [speech2txt, txt2speech] = await Promise.all([getDaemonStatus(micDaemon), getDaemonStatus(ttsDaemon)]);
+  const [speech2txt, txt2speech, bridge] = await Promise.all([
+    getDaemonStatus(micDaemon),
+    getDaemonStatus(ttsDaemon),
+    getDaemonStatus(bridgeDaemon)
+  ]);
   return {
-    running: speech2txt.running && txt2speech.running,
+    running: speech2txt.running && txt2speech.running && bridge.running,
     speech2txt,
-    txt2speech
+    txt2speech,
+    bridge
   };
 }
 
 async function startSystem() {
-  const [speech2txt, txt2speech] = await Promise.all([startDaemon(micDaemon), startDaemon(ttsDaemon)]);
+  const [speech2txt, txt2speech, bridge] = await Promise.all([
+    startDaemon(micDaemon),
+    startDaemon(ttsDaemon),
+    startDaemon(bridgeDaemon)
+  ]);
   return {
-    running: speech2txt.running && txt2speech.running,
+    running: speech2txt.running && txt2speech.running && bridge.running,
     speech2txt,
-    txt2speech
+    txt2speech,
+    bridge
   };
 }
 
 async function stopSystem() {
-  const [speech2txt, txt2speech] = await Promise.all([stopDaemon(micDaemon), stopDaemon(ttsDaemon)]);
+  const [speech2txt, txt2speech, bridge] = await Promise.all([
+    stopDaemon(micDaemon),
+    stopDaemon(ttsDaemon),
+    stopDaemon(bridgeDaemon)
+  ]);
   return {
     running: false,
     speech2txt,
-    txt2speech
+    txt2speech,
+    bridge
   };
 }
 
